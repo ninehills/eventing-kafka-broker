@@ -127,17 +127,7 @@ func (r Reconciler) FinalizeKind(ctx context.Context, cg *kafkainternals.Consume
 		return errors.New("placement list was not empty")
 	}
 
-	// Get consumers associated with the ConsumerGroup.
-	existingConsumers, err := r.ConsumerLister.Consumers(cg.GetNamespace()).List(labels.SelectorFromSet(cg.Spec.Selector))
-	if err != nil {
-		return cg.MarkReconcileConsumersFailed("ListConsumers", err)
-	}
-
-	for _, c := range existingConsumers {
-		if err := r.finalizeConsumer(ctx, c); err != nil {
-			return cg.MarkReconcileConsumersFailed("FinalizeConsumer", err)
-		}
-	}
+	// We don't need delete consumers associated with the ConsumerGroup, because the consumer has OwnerReference to the ConsumerGroup.
 
 	options, err := r.newAuthConfigOption(ctx, cg)
 	if err != nil {
@@ -183,7 +173,7 @@ func (r Reconciler) reconcileConsumers(ctx context.Context, cg *kafkainternals.C
 		if pc.Placement == nil {
 			// There is no placement for pc.Consumers, so they need to be finalized.
 			for _, c := range pc.Consumers {
-				logging.FromContext(ctx).Infof("Finalizing consumer %s/%s [+%v] from consumergroup %s/%s [+%v]", c.Namespace, c.Name, cg.Namespace, cg.Name, *c, *cg)
+				logging.FromContext(ctx).Debugf("Finalizing consumer %s/%s from consumergroup %s/%s", c.Namespace, c.Name, cg.Namespace, cg.Name)
 				if err := r.finalizeConsumer(ctx, c); err != nil {
 					return cg.MarkReconcileConsumersFailed("FinalizeConsumer", err)
 				}
@@ -217,6 +207,10 @@ func (r Reconciler) reconcileConsumersInPlacement(
 	//
 	// Consumers at the tail of the list are deleted.
 	sort.Stable(kafkainternals.ByReadinessAndCreationTime(consumers))
+
+	if len(consumers) > 1 {
+		logging.FromContext(ctx).Debugf("finalize consumers %+v", consumers)
+	}
 
 	for _, c := range consumers[1:] {
 		if err := r.finalizeConsumer(ctx, c); err != nil {
@@ -274,6 +268,7 @@ func (r Reconciler) finalizeConsumer(ctx context.Context, consumer *kafkainterna
 	dOpts := metav1.DeleteOptions{
 		Preconditions: &metav1.Preconditions{UID: &consumer.UID},
 	}
+	logging.FromContext(ctx).Debugf("finalize consumer %s/%s", consumer.Namespace, consumer.Name)
 	err := r.InternalsClient.Consumers(consumer.GetNamespace()).Delete(ctx, consumer.GetName(), dOpts)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to remove consumer %s/%s: %w", consumer.GetNamespace(), consumer.GetName(), err)
