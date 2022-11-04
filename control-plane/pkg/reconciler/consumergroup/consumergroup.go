@@ -141,26 +141,28 @@ func (r Reconciler) FinalizeKind(ctx context.Context, cg *kafkainternals.Consume
 
 	options, err := r.newAuthConfigOption(ctx, cg)
 	if err != nil {
-		return fmt.Errorf("failed to create config options for Kafka cluster auth: %w", err)
+		logging.FromContext(ctx).Errorw("failed to create auth config option.", zap.Error(err))
+		return nil
 	}
 
 	saramaConfig, err := kafka.GetSaramaConfig(options)
 	if err != nil {
-		return fmt.Errorf("failed to get cluster admin sarama config: %w", err)
+		logging.FromContext(ctx).Errorw("failed to get cluster admin sarama config.", zap.Error(err))
+		return nil
 	}
 	bootstrapServers := kafka.BootstrapServersArray(cg.Spec.Template.Spec.Configs.Configs["bootstrap.servers"])
 
 	kafkaClusterAdminClient, err := r.NewKafkaClusterAdminClient(bootstrapServers, saramaConfig)
 	if err != nil {
 		logging.FromContext(ctx).Errorw("unable to create a kafka client", zap.Error(err))
-		return err
+		return nil
 	}
 	defer kafkaClusterAdminClient.Close()
 
 	groupId := cg.Spec.Template.Spec.Configs.Configs["group.id"]
 	if err := kafkaClusterAdminClient.DeleteConsumerGroup(groupId); err != nil && !errors.Is(sarama.ErrGroupIDNotFound, err) {
 		logging.FromContext(ctx).Errorw("unable to delete the consumer group", zap.String("id", groupId), zap.Error(err))
-		return err
+		return nil
 	}
 
 	logging.FromContext(ctx).Infow("consumer group deleted", zap.String("id", groupId))
@@ -181,6 +183,7 @@ func (r Reconciler) reconcileConsumers(ctx context.Context, cg *kafkainternals.C
 		if pc.Placement == nil {
 			// There is no placement for pc.Consumers, so they need to be finalized.
 			for _, c := range pc.Consumers {
+				logging.FromContext(ctx).Infof("Finalizing consumer %s/%s [+%v] from consumergroup %s/%s [+%v]", c.Namespace, c.Name, cg.Namespace, cg.Name, *c, *cg)
 				if err := r.finalizeConsumer(ctx, c); err != nil {
 					return cg.MarkReconcileConsumersFailed("FinalizeConsumer", err)
 				}
