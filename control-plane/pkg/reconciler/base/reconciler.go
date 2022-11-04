@@ -279,11 +279,9 @@ func (r *Reconciler) UpdatePodsAnnotation(ctx context.Context, logger *zap.Logge
 			}
 		}
 
-		annotations[VolumeGenerationAnnotationKey] = fmt.Sprint(volumeGeneration)
-		pod.SetAnnotations(annotations)
+		patchData := []byte(fmt.Sprintf(`{"metadata":{"annotations":{"%s":"%d"}}}`, VolumeGenerationAnnotationKey, volumeGeneration))
 
-		if _, err := r.KubeClient.CoreV1().Pods(pod.Namespace).Update(ctx, pod, metav1.UpdateOptions{}); err != nil {
-			// Return the same error, so that we can handle conflicting updates.
+		if _, err := r.KubeClient.CoreV1().Pods(pod.Namespace).Patch(ctx, pod.Name, types.StrategicMergePatchType, patchData, metav1.PatchOptions{}); err != nil {
 			return err
 		}
 	}
