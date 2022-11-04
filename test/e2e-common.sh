@@ -115,17 +115,28 @@ function build_components_from_source() {
   [ -f "${EVENTING_KAFKA_CHANNEL_ARTIFACT}" ] && rm "${EVENTING_KAFKA_CHANNEL_ARTIFACT}"
   [ -f "${EVENTING_KAFKA_POST_INSTALL_ARTIFACT}" ] && rm "${EVENTING_KAFKA_POST_INSTALL_ARTIFACT}"
 
-  header "Data plane setup"
-  data_plane_setup || fail_test "Failed to set up data plane components"
+  #header "Data plane setup"
+  #data_plane_setup || fail_test "Failed to set up data plane components"
 
   header "Control plane setup"
   control_plane_setup || fail_test "Failed to set up control plane components"
 
-  header "Building Monitoring artifacts"
-  build_monitoring_artifacts || fail_test "Failed to create monitoring artifacts"
+  #header "Building Monitoring artifacts"
+  #build_monitoring_artifacts || fail_test "Failed to create monitoring artifacts"
 
   return $?
 }
+
+function build_control_plane_from_source() {
+
+  [ -f "${EVENTING_KAFKA_CONTROL_PLANE_ARTIFACT}" ] && rm "${EVENTING_KAFKA_CONTROL_PLANE_ARTIFACT}"
+
+  header "Control plane setup"
+  control_plane_setup || fail_test "Failed to set up control plane components"
+
+  return $?
+}
+
 
 function build_source_components_from_source() {
 

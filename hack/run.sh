@@ -33,6 +33,7 @@ function usage() {
   echo "   profiler                                                Run profiling tests"
   echo "   generate                                                Run code generators"
   echo "   build-from-source                                       Build artifacts from source"
+  echo "   build-control-plane-from-source                         Build control-plane artifacts from source"
   echo "   build-for-source-from-source                            Build artifacts from source for source bundle only"
   echo ""
 }
@@ -49,6 +50,8 @@ elif [[ "${action}" == "deploy-source" ]]; then
   source "${ROOT_DIR}"/test/e2e-common.sh && test_source_setup
 elif [[ "${action}" == "build-from-source" ]]; then
   source "${ROOT_DIR}"/test/e2e-common.sh && build_components_from_source
+elif [[ "${action}" == "build-control-plane-from-source" ]]; then
+  source "${ROOT_DIR}"/test/e2e-common.sh && build_control_plane_from_source
 elif [[ "${action}" == "build-for-source-from-source" ]]; then
   source "${ROOT_DIR}"/test/e2e-common.sh && build_source_components_from_source
 elif [[ "${action}" == "teardown" ]]; then
